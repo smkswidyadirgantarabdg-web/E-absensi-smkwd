@@ -80,7 +80,7 @@
    GitHub -> GAS Firebase API Gateway -> Firebase Realtime Database.
    Jangan menaruh service-account credential Firebase di file ini.
    Ganti API_URL dengan deployment Web App GAS baru. */
-const API_URL = 'https://script.google.com/macros/s/AKfycbyJcUX1NbWxMwODDu4DhlvIduJVdO6CVLnlvGBLyz81OLIW92aADtgBAmSKfA6x4zDz/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbxwa-ss-UNKWvb0xRcnlj0VdPkKBolIAxzfNOO09peWkfSfOr0aSa0P7WTCSrqllmfW/exec';
 const DATA_BACKEND = 'Firebase Realtime Database via GAS REST API';
 
 async function callBackend(functionName, args) {
@@ -3150,87 +3150,271 @@ function dhOpenCameraPopup() {
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Scan QR - Daftar Hadir</title>
-<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"><\/script>
 <style>
-*{margin:0;padding:0;box-sizing:border-box}
-body{background:${dhMode==='pulang'?'#1c0a00':'#0f172a'};color:#fff;font-family:'Segoe UI',sans-serif;display:flex;flex-direction:column;align-items:center;min-height:100vh;padding:8px 10px;gap:7px;overflow:hidden}
-h2{font-size:12px;color:#e2e8f0;letter-spacing:.8px;margin-top:2px}
-#scanNotif{display:none;position:fixed;top:0;left:0;right:0;z-index:999;padding:9px;text-align:center;box-shadow:0 4px 20px rgba(0,0,0,.45)}
-#scanNotif.ok{background:#047857;display:block}.n-label{font-size:8px;opacity:.65}.n-icon{font-size:20px}.n-nama{font-size:14px;font-weight:800}.n-detail{font-size:9px;opacity:.85}
-#scanNotif.err{background:#b91c1c;display:block}#scanNotif.pop{animation:popIn .3s ease}@keyframes popIn{from{transform:translateY(-30px);opacity:0}to{transform:translateY(0);opacity:1}}
-#videoWrap{position:relative;width:min(96vw,520px);aspect-ratio:4/3;background:#000;border-radius:14px;overflow:hidden;border:2px solid #475569;box-shadow:0 10px 35px rgba(0,0,0,.45)}
-#video{width:100%;height:100%;object-fit:cover;display:block}#canvas{display:none}
-.overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none}.box{width:62%;aspect-ratio:1;border:2px solid rgba(255,255,255,.75);border-radius:18px;position:relative;box-shadow:0 0 0 999px rgba(0,0,0,.12)}
-.box:after{content:'';position:absolute;left:5%;right:5%;top:10%;height:2px;background:#22c55e;box-shadow:0 0 12px #22c55e;animation:scan 1.8s linear infinite}@keyframes scan{0%{top:8%}50%{top:88%}100%{top:8%}}
-.box.found{border-color:#22c55e;box-shadow:0 0 0 999px rgba(34,197,94,.08),0 0 25px #22c55e}
-#status{width:min(96vw,520px);padding:9px 12px;border-radius:10px;background:#1e293b;color:#cbd5e1;text-align:center;font-size:11px;font-weight:600}.ok{color:#86efac!important;background:#064e3b!important}.err{color:#fecaca!important;background:#7f1d1d!important}
-#loading{padding:10px;color:#cbd5e1;font-size:11px}.spinner{display:inline-block;width:13px;height:13px;border:2px solid #64748b;border-top-color:#fff;border-radius:50%;animation:spin .8s linear infinite;vertical-align:-2px;margin-right:5px}@keyframes spin{to{transform:rotate(360deg)}}
-.btns{display:flex;gap:7px;width:min(96vw,520px)}button{flex:1;border:0;border-radius:10px;padding:9px 8px;font-weight:700;font-size:10px;background:#4f46e5;color:#fff}button.sec{background:#334155}button:disabled{opacity:.55}
-#tipBox{font-size:9px;color:#94a3b8;text-align:center}
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{background:${dhMode==='pulang'?'#1c0a00':'#0f172a'};color:white;font-family:'Segoe UI',sans-serif;
+       display:flex;flex-direction:column;align-items:center;
+       min-height:100vh;padding:8px 10px;gap:6px;overflow-x:hidden;}
+  h2{font-size:11px;font-weight:700;color:#e2e8f0;letter-spacing:1px;margin-top:2px;}
+
+  /* Notifikasi atas */
+  #scanNotif{display:none;position:fixed;top:0;left:0;right:0;z-index:999;
+    padding:8px 14px 10px;text-align:center;
+    border-bottom:1px solid rgba(255,255,255,.1);
+    box-shadow:0 4px 20px rgba(0,0,0,.5);}
+  #scanNotif.ok {background:linear-gradient(135deg,#065f46,#047857);display:block;}
+  #scanNotif.err{background:linear-gradient(135deg,#7f1d1d,#b91c1c);display:block;}
+  #scanNotif.pop{animation:popIn .3s cubic-bezier(.4,0,.2,1);}
+  @keyframes popIn{0%{transform:translateY(-30px);opacity:0}100%{transform:translateY(0);opacity:1}}
+  .n-label{font-size:8px;text-transform:uppercase;letter-spacing:1px;opacity:.5;color:#fff;margin-bottom:1px;}
+  .n-icon{font-size:18px;display:block;line-height:1;margin-bottom:1px;}
+  .n-nama{font-size:13px;font-weight:800;color:#fff;}
+
+  /* Flash border */
+  #flashOverlay{display:none;position:fixed;inset:0;z-index:998;pointer-events:none;border:4px solid transparent;}
+  #flashOverlay.ok {display:block;border-color:#10b981;animation:ff .5s ease forwards;}
+  #flashOverlay.err{display:block;border-color:#ef4444;animation:ff .5s ease forwards;}
+  @keyframes ff{0%{opacity:1}100%{opacity:0}}
+
+  /* Kelas badge */
+  #kelasBadge{background:#7c3aed;border:1px solid #6d28d9;border-radius:8px;
+    padding:4px 12px;font-size:10px;font-weight:700;color:#fff;letter-spacing:.5px;}
+
+  #videoWrap{position:relative;width:100%;max-width:300px;}
+  video{width:100%;border-radius:10px;display:block;background:#000;min-height:160px;object-fit:cover;}
+  canvas{display:none;}
+
+  .overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;}
+  .box{width:150px;height:150px;position:relative;}
+  .corner{position:absolute;width:20px;height:20px;border-color:${dhMode==='pulang'?'#fb923c':'#a78bfa'};border-style:solid;}
+  .tl{top:0;left:0;border-width:3px 0 0 3px;border-radius:5px 0 0 0;}
+  .tr{top:0;right:0;border-width:3px 3px 0 0;border-radius:0 5px 0 0;}
+  .bl{bottom:0;left:0;border-width:0 0 3px 3px;border-radius:0 0 0 5px;}
+  .br{bottom:0;right:0;border-width:0 3px 3px 0;border-radius:0 0 5px 0;}
+  .scanline{position:absolute;left:3px;right:3px;height:2px;
+    background:linear-gradient(90deg,transparent,#a78bfa,#7c3aed,#a78bfa,transparent);
+    top:6px;border-radius:2px;animation:scan 1.6s ease-in-out infinite;}
+  @keyframes scan{0%{top:4px;opacity:1}100%{top:140px;opacity:.2}}
+  .box.found .corner{border-color:#4ade80;}
+  .box.found .scanline{background:linear-gradient(90deg,transparent,#4ade80,transparent);}
+
+  #status{font-size:11px;color:#94a3b8;text-align:center;max-width:300px;min-height:28px;line-height:1.5;padding:0 6px;}
+  #status.ok{color:#4ade80;font-weight:700;font-size:13px;}
+  #status.err{color:#f87171;}
+
+  #loading{color:#64748b;font-size:12px;text-align:center;}
+  .spinner{width:28px;height:28px;border:3px solid #1e293b;border-top:3px solid #a78bfa;
+    border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 8px;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+
+  .btns{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;width:100%;max-width:300px;}
+  button{flex:1;min-width:80px;background:#6d28d9;color:white;border:none;
+    padding:9px 10px;border-radius:10px;font-size:11px;font-weight:700;cursor:pointer;transition:background .2s;}
+  button:hover{background:#5b21b6;}
+  button.sec{background:#1e293b;border:1px solid #334155;}
+  button.sec:hover{background:#334155;}
+  button.retry{background:#059669;}
+  button.retry:hover{background:#047857;}
 </style>
 </head>
 <body>
-<div id="scanNotif"><div class="n-label">Terakhir Di-scan</div><span class="n-icon" id="nIcon">✅</span><div class="n-nama" id="nNama"></div><div class="n-detail" id="nDetail"></div></div>
-<h2>📷 SCAN QR ABSENSI SISWA</h2>
-<div id="loading"><span class="spinner"></span><span id="loadingText">Memuat pustaka kamera...</span></div>
-<div id="videoWrap" style="display:none"><video id="video" autoplay playsinline muted></video><canvas id="canvas"></canvas><div class="overlay"><div class="box" id="aimBox"></div></div></div>
-<div id="status">Menyiapkan kamera...</div>
-<div id="tipBox">Arahkan QR Code siswa ke kotak pemindaian.</div>
-<div class="btns"><button onclick="switchCam()">🔄 Ganti Kamera</button><button class="sec" id="torchBtn" onclick="toggleTorch()" style="display:none">🔦 Senter</button><button class="sec" onclick="closeCam()">✕ Tutup</button></div>
+
+<div id="scanNotif">
+  <div class="n-label">Terakhir Di-scan</div>
+  <span class="n-icon" id="nIcon">✅</span>
+  <div class="n-nama" id="nNama"></div>
+</div>
+<div id="flashOverlay"></div>
+
+<h2 id="popTitle">&#128247; ${dhMode === 'pulang' ? 'SCAN QR PULANG' : 'SCAN QR — DAFTAR HADIR'}</h2>
+<div id="kelasBadge" style="background:${dhMode==='pulang'?'#ea580c':'#7c3aed'};border-color:${dhMode==='pulang'?'#c2410c':'#6d28d9'}">Kelas: ${selectedKelas==='AUTO'?'otomatis dari QR':selectedKelas}</div>
+
+<div id="loading">
+  <div class="spinner"></div>
+  <span>Meminta izin kamera...</span>
+</div>
+
+<div id="videoWrap" style="display:none">
+  <video id="video" autoplay playsinline muted></video>
+  <canvas id="canvas"></canvas>
+  <canvas id="canvas2" style="display:none"></canvas>
+  <div class="overlay">
+    <div class="box" id="aimBox">
+      <div class="corner tl"></div><div class="corner tr"></div>
+      <div class="corner bl"></div><div class="corner br"></div>
+      <div class="scanline"></div>
+    </div>
+  </div>
+</div>
+
+<div id="status">Arahkan QR siswa ke kamera</div>
+
+<div class="btns">
+  <button onclick="switchCam()">&#128260; Ganti Kamera</button>
+  <button class="sec" onclick="window.close()">&#10005; Tutup</button>
+</div>
+
 <script>
 var LS_KEY='${lsKeyVal}';
-var video=document.getElementById('video'), canvas=document.getElementById('canvas'), ctx=canvas.getContext('2d',{willReadFrequently:true});
-var statusEl=document.getElementById('status'), loading=document.getElementById('loading'), loadText=document.getElementById('loadingText'), wrap=document.getElementById('videoWrap'), aimBox=document.getElementById('aimBox');
-var stream=null, track=null, facing='environment', rafId=null, qrBusy=false, lastScan=0, sending=false, torchOn=false;
-var evidence=new Map(), recent=new Map();
-var QR_INTERVAL=80, EVIDENCE_WINDOW=900, MIN_EVIDENCE=2, RECENT_TTL=1800, failCount=0, lastRecovery=0, zoomTimer=null;
+var stream=null, facing='environment', scanLoop=null, lastScan=0, isSendingResult=false;
+var video=document.getElementById('video');
+var canvas=document.getElementById('canvas');
+var canvas2=document.getElementById('canvas2');
+var ctx=canvas.getContext('2d',{willReadFrequently:true});
+var ctx2=canvas2.getContext('2d',{willReadFrequently:true});
+var statusEl=document.getElementById('status');
+var loading=document.getElementById('loading');
+var wrap=document.getElementById('videoWrap');
+var aimBox=document.getElementById('aimBox');
 
-function setStatus(t,c){statusEl.textContent=t;statusEl.className=c||''}
-function cleanup(){if(rafId)cancelAnimationFrame(rafId);rafId=null;if(zoomTimer)clearInterval(zoomTimer);zoomTimer=null;if(stream)stream.getTracks().forEach(t=>t.stop());stream=null;track=null;qrBusy=false;}
-function closeCam(){cleanup();try{window.close()}catch(e){}}
-function unlockTTS(){try{var u=new SpeechSynthesisUtterance('');u.volume=0;window.speechSynthesis.speak(u)}catch(e){}}
-
-async function openCamera(){
-  cleanup(); loading.style.display='block'; wrap.style.display='none'; loadText.textContent='Meminta izin kamera...'; setStatus('Menyiapkan kamera...'); unlockTTS();
-  if(!window.isSecureContext)throw new Error('Kamera membutuhkan HTTPS atau koneksi aman.');
-  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia)throw new Error('Browser tidak menyediakan akses kamera.');
-  if(!window.jsQR)throw new Error('Pustaka jsQR gagal dimuat dari CDN. Periksa koneksi internet.');
-  var constraints={audio:false,video:{facingMode:{ideal:facing},width:{ideal:1920},height:{ideal:1080},frameRate:{ideal:30,max:30}}};
-  try{stream=await navigator.mediaDevices.getUserMedia(constraints)}catch(e){stream=await navigator.mediaDevices.getUserMedia({audio:false,video:{width:{ideal:1280},height:{ideal:720},frameRate:{ideal:30}}})}
-  video.srcObject=stream; await video.play(); track=stream.getVideoTracks()[0]||null;
-  for(var i=0;i<40;i++){if(video.readyState>=2&&video.videoWidth&&video.videoHeight&&video.srcObject)break;await new Promise(r=>setTimeout(r,100))}
-  if(!track)throw new Error('Track kamera tidak tersedia.');
-  await optimizeCamera();
-  loading.style.display='none'; wrap.style.display='block'; setStatus('Kamera aktif. Arahkan QR siswa ke kotak. Scanner terus aktif.');
-  startLoop();
+async function startCam(f){
+  try{
+    if(stream) stream.getTracks().forEach(t=>t.stop());
+    if(scanLoop){ cancelAnimationFrame(scanLoop); scanLoop=null; }
+    loading.style.display='block'; wrap.style.display='none';
+    statusEl.className=''; statusEl.textContent='Memulai kamera...';
+    stream=await navigator.mediaDevices.getUserMedia({
+      video:{facingMode:f==='environment'?{ideal:'environment'}:'user',width:{ideal:1280},height:{ideal:720}}
+    });
+    video.srcObject=stream;
+    await new Promise((res,rej)=>{
+      video.onloadedmetadata=()=>video.play().then(res).catch(rej);
+      setTimeout(()=>rej(new Error('Timeout')),8000);
+    });
+    loading.style.display='none'; wrap.style.display='block';
+    statusEl.textContent='Arahkan QR siswa ke kamera';
+    beginScan();
+  }catch(e){
+    loading.style.display='none';
+    statusEl.className='err';
+    statusEl.innerHTML='Kamera gagal: '+e.name+'<br><small>'+e.message+'</small>';
+    document.querySelector('.btns').innerHTML=
+      '<button class="retry" onclick="startCam(facing)">&#128260; Coba Lagi</button>'+
+      '<button class="sec" onclick="window.close()">&#10005; Tutup</button>';
+  }
 }
 
-async function optimizeCamera(){
-  if(!track)return;
-  try{var caps=track.getCapabilities?track.getCapabilities():{};if(caps.focusMode&&caps.focusMode.includes('continuous'))await track.applyConstraints({advanced:[{focusMode:'continuous'}]});else if(caps.focusMode&&caps.focusMode.includes('single-shot'))await track.applyConstraints({advanced:[{focusMode:'single-shot'}]})}catch(e){}
-  try{var caps2=track.getCapabilities?track.getCapabilities():{};if(caps2.zoom){var z=Math.min(caps2.zoom.max,Math.max(caps2.zoom.min||1,(caps2.zoom.min||1)+((caps2.zoom.max-(caps2.zoom.min||1))*.15)));await track.applyConstraints({advanced:[{zoom:z}]})}}catch(e){}
-  if(zoomTimer)clearInterval(zoomTimer);zoomTimer=setInterval(autoZoom,2000);
+function switchCam(){ facing=facing==='environment'?'user':'environment'; startCam(facing); }
+
+function beginScan(){
+  if(typeof jsQR==='undefined'){
+    statusEl.className='err';
+    statusEl.textContent='Library jsQR gagal dimuat.';
+    return;
+  }
+  scanLoop=null;
+  var lastFrame=0;
+  var processCanvas=document.createElement('canvas');
+  var processCtx=processCanvas.getContext('2d',{willReadFrequently:true});
+  var cropCanvas=document.createElement('canvas');
+  var cropCtx=cropCanvas.getContext('2d',{willReadFrequently:true});
+
+  function decodeCanvas(cvs,cctx,W,H){
+    try{
+      var image=cctx.getImageData(0,0,W,H);
+      var result=jsQR(image.data,W,H,{inversionAttempts:'attemptBoth'});
+      return result&&result.data?result.data:null;
+    }catch(e){return null;}
+  }
+
+  function frame(now){
+    if(!video || video.readyState<video.HAVE_ENOUGH_DATA){
+      scanLoop=requestAnimationFrame(frame); return;
+    }
+    if(isSendingResult){
+      scanLoop=requestAnimationFrame(frame); return;
+    }
+    if(now-lastFrame<80){
+      scanLoop=requestAnimationFrame(frame); return;
+    }
+    lastFrame=now;
+
+    var srcW=video.videoWidth, srcH=video.videoHeight;
+    if(!srcW||!srcH){
+      scanLoop=requestAnimationFrame(frame); return;
+    }
+
+    try{
+      var maxSide=1280;
+      var scale=Math.min(1,maxSide/Math.max(srcW,srcH));
+      var W=Math.max(320,Math.round(srcW*scale));
+      var H=Math.max(240,Math.round(srcH*scale));
+
+      processCanvas.width=W; processCanvas.height=H;
+      processCtx.imageSmoothingEnabled=false;
+      processCtx.drawImage(video,0,0,W,H);
+
+      var text=decodeCanvas(processCanvas,processCtx,W,H);
+
+      if(!text){
+        var cropScale=0.72;
+        var cw=Math.max(320,Math.round(W*cropScale));
+        var ch=Math.max(240,Math.round(H*cropScale));
+        var cx=Math.max(0,Math.round((W-cw)/2));
+        var cy=Math.max(0,Math.round((H-ch)/2));
+        var outW=Math.min(1280,Math.round(cw*1.45));
+        var outH=Math.min(1280,Math.round(ch*1.45));
+
+        cropCanvas.width=outW; cropCanvas.height=outH;
+        cropCtx.imageSmoothingEnabled=false;
+        cropCtx.drawImage(processCanvas,cx,cy,cw,ch,0,0,outW,outH);
+        text=decodeCanvas(cropCanvas,cropCtx,outW,outH);
+      }
+
+      if(text) onDetected(text);
+    }catch(e){}
+
+    scanLoop=requestAnimationFrame(frame);
+  }
+
+  scanLoop=requestAnimationFrame(frame);
 }
-async function autoZoom(){if(!track)return;try{var c=track.getCapabilities?track.getCapabilities():{};if(c.zoom){var current=track.getSettings().zoom||c.zoom.min||1;var next=Math.min(c.zoom.max,current+0.05);if(next>current)await track.applyConstraints({advanced:[{zoom:next}]})}}catch(e){}}
-async function recoverCamera(){if(!track||Date.now()-lastRecovery<3000)return;lastRecovery=Date.now();try{var c=track.getCapabilities?track.getCapabilities():{};if(c.focusMode){var mode=c.focusMode.includes('continuous')?'continuous':(c.focusMode.includes('single-shot')?'single-shot':null);if(mode)await track.applyConstraints({advanced:[{focusMode:mode}]})}}catch(e){}}
 
-function startLoop(){if(rafId)cancelAnimationFrame(rafId);rafId=requestAnimationFrame(frameLoop)}
-async function frameLoop(){if(!stream){return}var now=performance.now();if(!qrBusy&&now-(frameLoop.last||0)>=QR_INTERVAL){frameLoop.last=now;try{await decodeSuperSensitive()}catch(e){console.warn(e)}}rafId=requestAnimationFrame(frameLoop)}
-function decodeRegion(sx,sy,sw,sh,scale,enhance){if(!video.videoWidth||!video.videoHeight)return null;var W=Math.max(320,Math.round(sw*scale)),H=Math.max(240,Math.round(sh*scale));canvas.width=W;canvas.height=H;ctx.imageSmoothingEnabled=false;ctx.filter=enhance?'contrast(1.35) brightness(1.05)':'none';ctx.drawImage(video,sx,sy,sw,sh,0,0,W,H);ctx.filter='none';var img=ctx.getImageData(0,0,W,H);return window.jsQR(img.data,W,H,{inversionAttempts:'attemptBoth'})}
-async function decodeSuperSensitive(){if(qrBusy||!track||!window.jsQR||video.readyState<2)return;qrBusy=true;var found=null;try{var w=video.videoWidth,h=video.videoHeight;found=decodeRegion(0,0,w,h,1,false);if(!found){var rw=w*.88,rh=h*.88;found=decodeRegion((w-rw)/2,(h-rh)/2,rw,rh,1.25,false)}if(!found){var rw2=w*.68,rh2=h*.68;found=decodeRegion((w-rw2)/2,(h-rh2)/2,rw2,rh2,1.6,false)}if(!found){var rw3=w*.78,rh3=h*.78;found=decodeRegion((w-rw3)/2,(h-rh3)/2,rw3,rh3,1.35,true)}if(found&&found.data)registerEvidence(found.data);else{failCount++;if(failCount>=8){failCount=0;await recoverCamera()}}}finally{qrBusy=false}}
-function registerEvidence(text){var now=Date.now();text=String(text||'').trim();if(!text)return;var old=evidence.get(text);if(!old||now-old.lastAt>EVIDENCE_WINDOW)evidence.set(text,{count:1,lastAt:now});else{old.count++;old.lastAt=now}for(var [k,v] of evidence){if(now-v.lastAt>EVIDENCE_WINDOW)evidence.delete(k)}var d=evidence.get(text);if(d&&d.count>=MIN_EVIDENCE){evidence.delete(text);if(!recent.has(text)||now-recent.get(text)>RECENT_TTL){recent.set(text,now);onDetected(text)}}}
-function onDetected(text){var now=Date.now();if(sending||now-lastScan<1800)return;lastScan=now;aimBox.classList.add('found');setTimeout(()=>aimBox.classList.remove('found'),600);handleResult(text)}
+// Terima feedback dari parent
+window.addEventListener('message',function(ev){
+  if(!ev.data)return;
+  if(ev.data.type==='DH_SCAN_SUCCESS')
+    showNotif('ok','✅',ev.data.nama||'Berhasil');
+  else if(ev.data.type==='DH_SCAN_ERROR')
+    showNotif('err','❌',ev.data.message||'NISN tidak ditemukan');
+});
 
-async function switchCam(){facing=facing==='environment'?'user':'environment';await openCamera()}
-async function toggleTorch(){if(!track)return;try{var c=track.getCapabilities?track.getCapabilities():{};if(!c.torch)return;torchOn=!torchOn;await track.applyConstraints({advanced:[{torch:torchOn}]})}catch(e){}}
+function showNotif(type,icon,teks){
+  var n=document.getElementById('scanNotif');
+  var f=document.getElementById('flashOverlay');
+  if(!n)return;
+  document.getElementById('nIcon').textContent=icon;
+  document.getElementById('nNama').textContent=teks;
+  n.className=''; void n.offsetWidth; n.className=type+' pop';
+  if(f){ f.className=''; void f.offsetWidth; f.className=type==='ok'?'ok':'err';
+    setTimeout(()=>f.className='',550); }
+}
 
-function handleResult(text){if(!text||String(text).trim()===''||sending)return;sending=true;setStatus('✓ QR terdeteksi. Mengirim...','ok');var nisn=String(text).trim();try{if(window.opener&&!window.opener.closed)window.opener.postMessage({type:'DH_QR_SCAN_RESULT',nisn:nisn,ts:Date.now()},'*')}catch(e){}try{localStorage.setItem(LS_KEY,JSON.stringify({nisn:nisn,ts:Date.now()}))}catch(e){}setTimeout(function(){setStatus('Siap scan siswa berikutnya...');sending=false},1200)}
-window.addEventListener('message',function(ev){if(!ev.data)return;if(ev.data.type==='DH_SCAN_SUCCESS')showNotif('ok','✅',ev.data.nama||'Berhasil');else if(ev.data.type==='DH_SCAN_ERROR')showNotif('err','❌',ev.data.message||'NISN tidak ditemukan')});
-function showNotif(type,icon,teks){var n=document.getElementById('scanNotif');if(!n)return;document.getElementById('nIcon').textContent=icon;document.getElementById('nNama').textContent=teks;n.className='';void n.offsetWidth;n.className=type+' pop'}
-window.addEventListener('beforeunload',cleanup);
-openCamera().catch(function(e){console.error(e);cleanup();loading.style.display='block';loadText.textContent='Kamera gagal dibuka';setStatus('❌ '+(e.message||e),'err')});
+function handleResult(text){
+  if(!text||text.trim()===''||isSendingResult)return;
+  isSendingResult=true;
+  statusEl.className='ok';
+  statusEl.textContent='✓ Terdeteksi! Mengirim...';
+  var nisn=text.trim();
+  // Kirim ke parent via postMessage
+  try{
+    if(window.opener&&!window.opener.closed)
+      window.opener.postMessage({type:'DH_QR_SCAN_RESULT',nisn:nisn,ts:Date.now()},'*');
+  }catch(e){}
+  // Backup via localStorage
+  try{ localStorage.setItem(LS_KEY,JSON.stringify({nisn:nisn,ts:Date.now()})); }catch(e){}
+  setTimeout(function(){
+    statusEl.className='';
+    statusEl.textContent='Siap scan siswa berikutnya...';
+    isSendingResult=false;
+    lastScan=Date.now();
+  },1800);
+}
+
+startCam(facing);
 <\/script>
-</body></html>`;
+</body>
+</html>`;
 
     const w = Math.min(360, screen.width - 40);
     const h = Math.min(500, screen.height - 60);
